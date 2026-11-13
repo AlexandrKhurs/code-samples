@@ -41,23 +41,6 @@
 3. **Админ создает [шаблон сообщения](./app/Orchid/Layouts/NotificationTemplate/NotificationTemplateEditContentLayout.php#L131):** выбирает триггер и каскад, задает тексты для каналов каскада с переменными триггера, настраивает фильтры и получателей;
 4. **Админ просматривает логи отправки** в админке в наглядном виде (кому какое соощение в какой канал пришло, в какой не пришло и по какой причине);
 
-### Устройство админки
-
-- [Триггеры](./app/Orchid/Screens/NotificationTrigger/NotificationTriggerListScreen.php#L20) - список доступных триггеров, их получателей и настроенных шаблонов; дает пользователю обзор "какие триггеры использованы, а какие нет";
-
-- [Каскады](./app/Orchid/Screens/NotificationCascade/NotificationCascadeListScreen.php#L17) - список, создание и редактирование каскадов отправки;
-
-- [Шаблоны](./app/Orchid/Screens/NotificationTemplate/NotificationTemplateListScreen.php#L18) - список, создание и редактирование шаблонов; форма динамическая (используются Orchid's Listeners - вшитый механизм зависимости части формы от введенных данных):
-
-    - выбор триггера (определяет, какие будут доступны получатели, фильтры и переменные);
-
-    - выбор каскада (определяет, для каких каналов предлагается заполнить текст);
-
-    - также при сохранении валидирует текст сообщения на корректность переменных (все ли доступны для данного триггера, все ли корректно парсятся);
-- [Логи отправки](./app/Orchid/Screens/NotificationMessage/NotificationMessageListScreen.php#L13) - список Сообщений (Message) с получателями и статусами (3 уровня - список сообщений, форма сообщения со списком его отправлений, форма отправления с логами апи-вызовов);
-
-[см. иллюстрации](#иллюстрация-работы-админки)
-
 ### Обработка триггера
 
 Структура хранения сообщений
@@ -71,18 +54,15 @@
 3. **Обработка Отправлений.** [NotificationDeliveryProcessor](./app/Modules/Notification/V1/Services/NotificationDelivery/NotificationDeliveryProcessor.php#L36) анализирует состояние Отправления (Delivery) и при необходимости делает попытку отправки через нужный канал. При изменении статуса Отправления (Delivery) заново запускается NotificationMessageProcessor и анализирует состояние Сообщения (Message);
 
 ## Тестирование
-
-1. Фасад NotificationTrigger предоставялет фейкер:
+Фасад NotificationTrigger предоставялет фейкер:
 - инициализируется с помощью [NotificationTrigger::fake()](./app/Modules/Notification/V1/Facades/NotificationTrigger.php#L44) (в частности, можно зафейкать только определенные триггеры);
 - ассертится с помощью [assertFired](./app/Modules/Notification/V1/Tests/Fakers/NotificationTriggerServiceFaker.php#L28)/[assertNotFired()](./app/Modules/Notification/V1/Tests/Fakers/NotificationTriggerServiceFaker.php#L62).
 
 Примеры тестов:
-
 - [EventCreatedListenerTest](./app/Modules/Notification/V1/Tests/Integration/Listeners/EventCreatedListenerTest.php#L16) — использование фейкера в тесте листенера.
 - [ComplexNotificationE2ETest](./app/Modules/Notification/V1/Tests/Integration/ComplexNotificationE2ETest.php#L37) — полный цикл отправки по каскаду.
 - [NotificationDeliveryProcessorTest](./app/Modules/Notification/V1/Tests/Integration/NotificationDeliveryProcessorTest.php#L56) — обработка доставок.
 - [EventUpcomingTriggerTest](./app/Modules/Notification/V1/Tests/Integration/Triggers/EventUpcomingTriggerTest.php#L20) — фильтры триггера.
-
 
 ## Точки расширения
 
@@ -99,18 +79,14 @@
 - простейший триггер — [EventCancelledTrigger](./app/Modules/Notification/V1/NotificationTriggers/Event/EventCancelledTrigger.php#L8)
 - комплексный триггер — [EventUpcomingTrigger](./app/Modules/Notification/V1/NotificationTriggers/Event/EventUpcomingTrigger.php#L11)
 
-
 ### Новые каналы
-
 - каналы имплементируют интерфейс [ChannelInterface](./app/Modules/Notification/V1/Notifications/Channels/ChannelInterface.php#L8)
     - пример простейшего канала — [SmsChannel](./app/Modules/Notification/V1/Notifications/Channels/SmsChannel.php#L12)
 
 ## Основные known-issues
-
 - основные бизнес-задачи, которые были отложены как менее приоритетные:
     - реализовать параллельную обработку воркерами для ускорения рассылок (сначала требуется доп.защита [здесь](./app/Modules/Notification/V1/Jobs/FireNotificationTriggerJob.php#L26) и [здесь](./app/Modules/Notification/V1/Services/NotificationTrigger/NotificationTriggerService.php#L308));
     - реализовать анализ более "глубоких" статусов отправки (сейчас все заканчивается на "отправлен", в будущем предполагалась обработка "доставлен", "прочитан" и тп., в зависимости от выбранного канала отправки (смотря что он поддерживает));
-
 - архитектурные недочёты, отложенные в техдолг:
     - неудачная связь определния финальных статусов доставки с [Отправлением, а не Каналом](./app/Modules/Notification/V1/Enums/NotificationDeliveryStatusEnum.php#L16); в частности, это первое, что надо сделать при реализации обработки "глубоких" статусов;
     - часть структур в контракте триггера хранится в массиве, по ходу разработки усложнилась.. есть желание перевести на типизированную структуру VO:
@@ -120,6 +96,15 @@
     - легаси-структура каналов [устарела и выглядит переусложненной](./app/Modules/Notification/V1/Services/NotificationChannel/NotificationChannelService.php#L22)
         - в частности, изза этого родился [костыль для унификации возврата статуса отправки](./app/Modules/Notification/V1/Services/SenderServiceInterface.php#L9); он сделан как временное решние поверх существующей архитектуры, и просит рефактора;
 
+### Устройство админки
+- [Триггеры](./app/Orchid/Screens/NotificationTrigger/NotificationTriggerListScreen.php#L20) - список доступных триггеров, их получателей и настроенных шаблонов; дает пользователю обзор "какие триггеры использованы, а какие нет";
+- [Каскады](./app/Orchid/Screens/NotificationCascade/NotificationCascadeListScreen.php#L17) - список, создание и редактирование каскадов отправки;
+- [Шаблоны](./app/Orchid/Screens/NotificationTemplate/NotificationTemplateListScreen.php#L18) - список, создание и редактирование шаблонов; форма динамическая (используются Orchid's Listeners - вшитый механизм зависимости части формы от введенных данных):
+    - выбор триггера (определяет, какие будут доступны получатели, фильтры и переменные);
+    - выбор каскада (определяет, для каких каналов предлагается заполнить текст);
+    - также при сохранении валидирует текст сообщения на корректность переменных (все ли доступны для данного триггера, все ли корректно парсятся);
+- [Логи отправки](./app/Orchid/Screens/NotificationMessage/NotificationMessageListScreen.php#L13) - список Сообщений (Message) с получателями и статусами (3 уровня - список сообщений, форма сообщения со списком его отправлений, форма отправления с логами апи-вызовов);
+[см. иллюстрации](#иллюстрация-работы-админки)
 
 ## Приложенные изображения
 
